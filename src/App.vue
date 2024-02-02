@@ -1,11 +1,11 @@
 <script lang="ts">
 
 import { fromLonLat } from 'ol/proj';
-import { Vector, Layer } from 'ol/layer';
+import { Vector } from 'ol/layer';
 import SourceVector from 'ol/source/Vector';
 import Feature from 'ol/Feature';
 import * as Style from 'ol/style';
-import { Circle } from 'ol/geom';
+import { Circle, Geometry } from 'ol/geom';
 import Map from 'ol/Map';
 import OSM from 'ol/source/OSM.js';
 import TileLayer from 'ol/layer/Tile.js';
@@ -14,12 +14,24 @@ import View from 'ol/View.js';
 export default {
 
   data() {
+    const circle_vector = new Vector();
+    const center = fromLonLat([-44.0316416, -20.0269543]);
+    const radius: number = 0;
+
     return {
-      map: new Map
+      map: new Map,
+      radius: radius,
+      center: center,
+      circle_vector: circle_vector
     }
   },
 
   mounted() {
+    // remove controlls
+    this.map.getControls()?.forEach((control) => {
+      control.setMap(null);
+    })
+
     this.map.setTarget('map');
 
     this.map.setLayers([
@@ -29,68 +41,57 @@ export default {
     ])
 
     this.map.setView(new View({
-      center: fromLonLat([0, 0]),
+      center: this.center,
       zoom: 0
     }));
 
-    var centro = fromLonLat([-44.0316416, -20.0269543]);
-
     setTimeout(() => {
       let view = this.map.getView();
-      view.setCenterInternal(centro);
+      view.setCenterInternal(this.center);
       view.setZoom(18);
 
       // add circle
-      let circle = new Circle(centro, 100);
+      let circle = new Circle(this.center, 100);
+      let circle_feature = new Feature(circle);
 
-      let layer_circle = new Vector({
-        source: new SourceVector({
-          features: [new Feature(circle)]
+      circle_feature.setId('circle_feature');
+
+      this.circle_vector.setSource(new SourceVector({
+        features: [circle_feature]
+      }));
+
+      this.circle_vector.setStyle(new Style.Style({
+        stroke: new Style.Stroke({
+          color: 'red',
+          width: 2
         }),
 
-        style: new Style.Style({
-          stroke: new Style.Stroke({
-            color: 'red',
-            width: 2
-          }),
-
-          fill: new Style.Fill({
-            color: 'rgba(255, 0, 0, 0.1)'
-          })
+        fill: new Style.Fill({
+          color: 'rgba(255, 0, 0, 0.1)'
         })
-      })
+      }))
 
-      this.map.addLayer(layer_circle);
-
-      // remove circle
-      setTimeout(() => {
-        layer_circle.setSource(null);
-        layer_circle.setStyle(null);
-      }, 3000)
-
-      // not found
-      // this.map.removeLayer(layes_circle)
-      //  this.map.getLayers().forEach(vl => {      
-      //     // if (layer.get('name') && layer.get('name') == 'flag_vectorLayer') {
-      //       this.map.removeLayer(vl)
-      //     // }
-      //   });
+      this.circle_vector.setMap(this.map as Map);
     }, 1000)
 
-
-
-
-
     // https://openlayers.org/en/latest/examples/device-orientation.html
-
-
   },
+
+  methods: {
+    raio: function () {
+      let circle_feature = this.circle_vector.getSource()?.getFeatureById('circle_feature') as Feature<Geometry>;
+      circle_feature.setGeometry(new Circle(this.center, this.radius));
+
+      // remove
+      // this.circle_vector.setMap(null);
+    }
+  }
 }
 </script>
 
 <template>
   <div id="map">
-
+    <input placeholder="Raio" id="raio" type="number" v-model="radius" v-on:input="raio">
   </div>
 </template>
 
@@ -103,5 +104,16 @@ export default {
   left: 0;
   right: 0;
   left: 0;
+}
+
+#raio {
+  position: fixed;
+  z-index: 100;
+  top: 5px;
+  width: 40px;
+  right: 5px;
+  border: 1px solid rgb(137, 137, 137);
+  padding: 5px;
+  border-radius: 5px;
 }
 </style>
